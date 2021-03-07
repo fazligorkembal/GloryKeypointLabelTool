@@ -88,7 +88,7 @@ class data:
         image = self.data['images'][image_json_index]
         annotation['id'] = len(image['annotation_json_indexes'])
         annotation['image_id'] = image['id']  
-        annotation['category_id'] = self.data['categories'][category_index]
+        annotation['category_id'] = self.data['categories'][category_index]['id']
         annotation['segmentation'] = []
         annotation['area'] = image['height'] * image['width']
         annotation['bbox'] = bbox
@@ -101,7 +101,6 @@ class data:
 
     def addKeypointWithCategoryIndex(self, index, keypoint_name):
         self.data['categories'][index]['keypoints'].append(keypoint_name)
-        print(self.data['categories'])
 
     def getImageAnnotationsWithImageIndex(self, image_json_index):
         image = self.data['images'][image_json_index]

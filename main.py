@@ -37,20 +37,21 @@ class Tv:
             self.selected_image_annotations = self.data.getImageAnnotationsWithImageIndex(self.current_index)
             self.original_resolution = (self.selected_original_image.shape[1], self.selected_original_image.shape[0])
 
-            pressed_key = self.reflesh(wait=True, annotations=self.selected_image_annotations, selected_point=self.selected_point)
+            pressed_key = self.reflesh(wait=True, annotations=self.selected_image_annotations, selected_point=self.selected_point, selected_annotation=self.selected_annotation, all_categories=self.data.data['categories'])
             if self.menu_controller(pressed_key=pressed_key):
                 break
         
     
-    def reflesh(self, wait=False, annotations=None, line_center= None, selected_point=None, new_name=None, selected_button=None, selected_annotation=None):
+    def reflesh(self, wait=False, annotations=None, line_center= None, selected_point=None, new_name=None, selected_button=None, selected_annotation=None, all_categories=None):
         image = cv2.resize(self.selected_original_image, self.new_resolution)
 
         if self.screen_name == ['annotation_screen']:
-            image = self.screens.annotation_screen(image, annotations=annotations,line_center=line_center, selected_point=selected_point, original_resolution=self.original_resolution, new_resolution=self.new_resolution)
+            image = self.screens.annotation_screen(image, annotations=annotations,line_center=line_center, selected_point=selected_point, original_resolution=self.original_resolution, 
+                                                   new_resolution=self.new_resolution, all_categories=all_categories)
 
         if self.screen_name == ['option_screen']:
             all_categories = self.data.data['categories']
-            image, self.option_buttons = self.screens.option_screen(image,new_name=new_name, selected_button=selected_button, all_categories=all_categories, selected_annotation=selected_annotation)
+            image, self.option_buttons = self.screens.option_screen(image, new_name=new_name, selected_button=selected_button, all_categories=all_categories, selected_annotation=selected_annotation)
 
         cv2.imshow(self.app_name, image)
 
@@ -63,7 +64,6 @@ class Tv:
 
     def clickListener(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
-            
             if self.screen_name == ['annotation_screen']:
                 print("ToDo: Check clicked on exist point")
                 if self.selected_point == None:
@@ -84,15 +84,16 @@ class Tv:
 
                         self.data.addAnnotationWithImageJsonIndex(self.current_index, bbox, self.selected_annotation['index'])
                         self.selected_image_annotations = self.data.getImageAnnotationsWithImageIndex(self.current_index)
-        
-                    #self.reflesh(wait=False, annotations=self.selected_image_annotations, line_center=(x, y))
+                        self.selected_point = None
+                        self.reflesh(wait=False, annotations=self.selected_image_annotations, line_center=(x,y), all_categories=self.data.data['categories']) 
+
 
             elif self.screen_name == ['option_screen'] and self.selected_button == None:
+                print(self.option_buttons)
                 for option_button in self.option_buttons:
                     box = option_button['location']
                     if x > box[0] and x < box[2] and y > box[1] and y < box[3]:
-                        
-                        if option_button['name'] != 'annotation':
+                        if option_button['name'] == 'new_annotation' or option_button['name'] == 'new_keypoint':
                             self.selected_button = option_button
                             new_string = self.getStringFromView()
                             if self.selected_button['name'] == 'new_annotation' and new_string != None:
@@ -102,14 +103,19 @@ class Tv:
                                     self.data.addKeypointWithCategoryIndex(self.selected_annotation['index'], new_string)
                                     
                             self.selected_button = None
-                        else:
+                        elif option_button['name'] == 'annotation':
                             if self.selected_annotation != option_button:
                                 self.selected_annotation = option_button
                                 self.selected_button = None
                             else:
                                 self.selected_annotation = None
-                            
-        self.reflesh(wait=False, annotations=self.selected_image_annotations, line_center=(x, y),selected_button=self.selected_button, selected_annotation=self.selected_annotation)
+                        elif option_button['name'] == 'resolution':
+                            self.new_resolution = option_button['resolution']
+                            print("Here ... ")
+                self.reflesh(wait=False, annotations=self.selected_image_annotations, selected_button=self.selected_button, selected_annotation=self.selected_annotation) 
+    
+        if event == cv2.EVENT_MOUSEMOVE and self.screen_name == ['annotation_screen']:
+            self.reflesh(wait=False, annotations=self.selected_image_annotations, selected_point=self.selected_point, line_center=(x,y), all_categories=self.data.data['categories']) 
 
 
     def getStringFromView(self):
@@ -124,8 +130,7 @@ class Tv:
                     self.reflesh(wait=False)
                     return new_string
             elif pressed_key & 0xFF == 27:
-                self.reflesh(wait=False)
-                #self.selected_button = None
+                self.reflesh(wait=False, selected_annotation=self.selected_annotation)
                 return None
                 break
             else:
