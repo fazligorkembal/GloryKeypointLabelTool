@@ -6,8 +6,11 @@ class screen:
         self.color_green = (0, 255, 0)
         self.color_red   = (0, 0, 255)
         self.color_blue  = (255, 0, 0)
+        self.color_grey = (125, 125, 125)
         self.thickness = 1
         self.button_locations = []
+    
+    
     def addButtonLocation(self, name=None, index=None, location=None, resolution=None):
         temp = {}
         temp['name'] = name
@@ -16,6 +19,15 @@ class screen:
         temp['resolution'] = resolution
         self.button_locations.append(temp)
     
+    def increaseCircle(self):
+        if self.thickness < 5:
+            self.thickness += 1
+    
+
+    def decreaseCircle(self):
+        if self.thickness > 1:
+            self.thickness -= 1
+
 
     def annotation_screen(self, image, annotations = None, original_resolution=None,new_resolution=None, line_center=None, selected_point=None, all_categories=None):
         image = cv2.putText(image, 'Annotation Screen', (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, self.color_blue, 2, cv2.LINE_AA)
@@ -26,8 +38,11 @@ class screen:
         if selected_point != None:
             image = cv2.circle(image, selected_point['location'], self.thickness, self.color_red, self.thickness)
             image = cv2.rectangle(image, selected_point['location'], line_center, self.color_red, self.thickness)
-            
-        if annotations != None:
+
+
+        if annotations != None or annotations != []:
+            print("Ann")
+            print(annotations)
             for annotation in annotations:
                 bbox = annotation['bbox']
                 xmin = bbox[0]
@@ -44,10 +59,31 @@ class screen:
                 image = cv2.circle(image, (xmax, ymax), self.thickness, self.color_green, self.thickness)
 
 
+                axis_hold = []
+                for axis_index, axis in enumerate(annotation['keypoints']):
+                    axis_hold.append(axis)
+                    
+                    if len(axis_hold) == 3:
+                        x = axis_hold[0]
+                        y = axis_hold[1]
+                        x, y = utils.reshapeResizeSizes(x, y, original_resolution, new_resolution)
+                        visible = axis_hold[2]
+                        axis_hold = []
+
+                        if visible == 1:
+                            image = cv2.circle(image, (x, y), self.thickness, self.color_green, self.thickness)
+                        elif visible == 2:
+                            image = cv2.circle(image, (x, y), self.thickness, self.color_blue, self.thickness)
+                        else:
+                            image = cv2.circle(image, (x, y), self.thickness, self.color_grey, self.thickness)
+                        
+
+
+
         return image
 
 
-    def option_screen(self, image, selected_button=None, new_name=None, all_categories=None, selected_annotation=None):
+    def option_screen(self, image, selected_button=None, new_name=None, all_categories=None, selected_category=None):
         self.button_locations = []
 
 
@@ -99,11 +135,11 @@ class screen:
 
         for i, category in enumerate(all_categories):
    
-            if selected_annotation == None:
+            if selected_category == None:
                 image = cv2.putText(image, category['name'], (700, 80 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_blue, 1, cv2.LINE_AA)
                 image = cv2.rectangle(image, (695, 65 + i * 30), (800, 85 + i * 30), self.color_blue, 1)
             else:
-                if selected_annotation['index'] ==  i:
+                if selected_category['index'] ==  i:
                     image = cv2.putText(image, category['name'], (700, 80 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_green, 1, cv2.LINE_AA)
                     image = cv2.rectangle(image, (695, 65 + i * 30), (800, 85 + i * 30), self.color_green, 1)
 
