@@ -23,7 +23,7 @@ def reshapeToNewResolution(x, y, original_resolution, new_resolution):
 
 def getNearestPoint(selected_image_annotations, x, y, original_resolution, new_resolution):
     def getDistance(x1, y1, x2, y2):
-        return math.sqrt( (x2 - x2) ** 2 + (y2 - y1) ** 2 )
+        return math.sqrt( (x2 - x1) ** 2 + (y2 - y1) ** 2 )
 
     hold_distance = 10_000_000
     selected_point = {}
@@ -39,15 +39,15 @@ def getNearestPoint(selected_image_annotations, x, y, original_resolution, new_r
         temp_distance = getDistance(xmin,ymin, x, y)
         if temp_distance < hold_distance:
             hold_distance = temp_distance
-            selected_point['point_name'] = 'xmin'
-            selected_point['location'] = (xmin, ymin)
+            selected_point['process_name'] = 'edit'
             selected_point['annotation_index'] = index
+            selected_point['point_name'] = 'min'
         
         temp_distance = getDistance(xmax, ymax, x, y)
         if temp_distance < hold_distance:
             hold_distance = temp_distance
-            selected_point['point_name'] = 'xmax'
-            selected_point['location'] = (xmax, ymax)
+            selected_point['process_name'] = 'edit'
+            selected_point['point_name'] = 'max'
             selected_point['annotation_index'] = index
         
 
@@ -61,10 +61,13 @@ def getNearestPoint(selected_image_annotations, x, y, original_resolution, new_r
                 temp_distance = getDistance(axis_x, axis_y, x, y)
                 if temp_distance < hold_distance:
                     hold_distance = temp_distance
+                    selected_point['process'] = 'edit'
                     selected_point['point_name'] = 'keypoint'
-                    selected_point['location'] = (axis_x, axis_y)
                     selected_point['annotation_index'] = index
+                    selected_point['keypoint_index'] = axis_index
+                    
                 axis_hold = []
+                
 
     return hold_distance, selected_point
 

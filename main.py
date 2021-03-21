@@ -31,7 +31,7 @@ class Tv:
         self.keypoint_visible = 2
         self.added_keypoint_count = 0
         self.selected_image_data = None
-
+        self.editable_point_radius = 2.0
     def start(self):
         while True:
             start = time.time()
@@ -96,14 +96,20 @@ class Tv:
                 self.reflesh(wait=False, annotations=self.selected_image_annotations, selected_button=self.selected_button, selected_category=self.selected_category)
 
             if self.screen_name == ['annotation_screen']:
-                print("ToDo: Edit to Points")
-
                 if self.selected_point == None:
                     self.selected_point = {}
+                    self.selected_point['process_name'] = 'annotation'
                     self.selected_point['point_name'] = 'min'
                     self.selected_point['location'] = (x, y)
+
+                    distance, hold_point = utils.getNearestPoint(self.selected_image_annotations, x, y, self.original_resolution, self.new_resolution)
+                    if distance < self.editable_point_radius:
+                        self.selected_point = hold_point
+                        print("Editable Menu: " + self.selected_point['point_name'])
+                        print(str(distance) + "     " + str(self.editable_point_radius))
+
                 else:
-                    if self.selected_point['point_name'] == 'min':
+                    if self.selected_point['process_name'] == 'annotation':
                         xmin, ymin = self.selected_point['location']
                         xmax, ymax = (x, y)
                         bbox_width = xmax - xmin
@@ -114,9 +120,37 @@ class Tv:
                         bbox = (xmin, ymin, bbox_width, bbox_height)
 
                         self.selected_image_annotations = self.data.addAnnotationWithImageID(self.selected_category['index'], self.selected_image_data['id'], self.original_resolution, bbox, self.selected_image_annotations)
-                        self.selected_point = None
-                        self.reflesh(wait=False, annotations=self.selected_image_annotations, line_center=(x,y), all_categories=self.data.data['categories']) 
-                        self.screen_name = ['keypoint_screen']
+                        if len(self.data.data['categories'][self.selected_category['index']]['keypoints']) > 0:
+                            self.screen_name = ['keypoint_screen']
+
+                    elif self.selected_point['process_name'] == 'edit':
+                        newx, newy = utils.reshapeToOriginalResolution(x, y, self.original_resolution, self.new_resolution)
+                        if self.selected_point['point_name'] == 'min':
+                            print("Editable " + str(self.selected_point['annotation_index']) + "   " + self.selected_point['point_name'])
+                            bbox = list(self.selected_image_annotations[self.selected_point['annotation_index']]['bbox'])
+                            xmin, ymin, xmax, ymax = bbox
+                            xmax = xmin + xmax
+                            ymax = ymin + ymax
+                            bbox = [newx, newy, xmax - newx, ymax - newy]
+                            self.selected_image_annotations[self.selected_point['annotation_index']]['bbox'] = list(bbox)
+
+                            self.selected_image_annotations[self.selected_point['annotation_index']]['bbox'] = bbox
+
+                        elif self.selected_point['point_name'] == 'max':
+                            print("Editable " + str(self.selected_point['annotation_index']) + "   " + self.selected_point['point_name'])
+                            bbox = list(self.selected_image_annotations[self.selected_point['annotation_index']]['bbox'])
+                            bbox[2] = newx - bbox[0]
+                            bbox[3] = newy - bbox[1]
+                            self.selected_image_annotations[self.selected_point['annotation_index']]['bbox'] = list(bbox)
+                        elif self.selected_point['point_name'] == 'keypoint':
+                            print("Editable " + str(self.selected_point['annotation_index']) + "   " + self.selected_point['point_name'])
+                            self.selected_image_annotations[self.selected_point['annotation_index']]['keypoints'][self.selected_point['keypoint_index'] - 2] = newx
+                            self.selected_image_annotations[self.selected_point['annotation_index']]['keypoints'][self.selected_point['keypoint_index'] - 1] = newy
+                
+                    self.selected_point = None
+                self.reflesh(wait=False, annotations=self.selected_image_annotations, line_center=(x,y), all_categories=self.data.data['categories']) 
+
+
 
             elif self.screen_name == ['keypoint_screen']:
                 num_keypoints = len(self.data.data['categories'][self.selected_category['index']]['keypoints'])
@@ -193,12 +227,6 @@ class Tv:
 
 
 if __name__ == "__main__":
-    """
-    data = dataTree2.data("/home/gorkem/Documents/GloryKeypointLabelTool/person_keypoints_val2017.json")
-    x, y = data.GetImageData('000000015335.jpg', (480, 640))
-    print(json.dumps(x, indent=4))
-    #print(len(y))
-    """
 
     tv = Tv("/home/gorkem/Documents/GloryKeypointLabelTool/dataset", "/home/gorkem/Documents/GloryKeypointLabelTool/person_keypoints_val2017.json")
     tv.start()

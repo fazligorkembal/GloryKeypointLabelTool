@@ -107,7 +107,7 @@ class data:
         temp_annotation['category_id'] = self.data['categories'][category_index]['id']
         temp_annotation['segmentation'] = []
         temp_annotation['area'] = original_resolution[0] * original_resolution[1]
-        temp_annotation['bbox'] = bbox
+        temp_annotation['bbox'] = list(bbox)
         temp_annotation['iscrowd'] = 0
         temp_annotation['keypoints'] = []
         temp_annotation['num_keypoints'] = 0

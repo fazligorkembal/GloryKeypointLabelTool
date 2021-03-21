@@ -35,13 +35,14 @@ class screen:
             image = cv2.line(image, (line_center[0], 0), (line_center[0], new_resolution[1]), self.color_green, self.thickness) 
             image = cv2.line(image, (0, line_center[1]), (new_resolution[0], line_center[1]), self.color_green, self.thickness) 
         
-        if selected_point != None:
+        if selected_point != None and selected_point['process_name'] == 'annotation':
             image = cv2.circle(image, selected_point['location'], self.thickness, self.color_red, self.thickness)
             image = cv2.rectangle(image, selected_point['location'], line_center, self.color_red, self.thickness)
 
+        print(selected_point)
 
         if annotations != None or annotations != []:
-            for annotation in annotations:
+            for annotation_index, annotation in enumerate(annotations):
                 bbox = annotation['bbox']
                 xmin = bbox[0]
                 ymin = bbox[1]
@@ -55,8 +56,14 @@ class screen:
 
                 image = cv2.rectangle(image, (xmin, ymin), (xmax, ymax), self.color_green, self.thickness)
                 image = cv2.putText(image, all_categories[annotation['category_id'] - 1]['name'], (xmin + 10, ymin + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_green, 1, cv2.LINE_AA)
-                image = cv2.circle(image, (xmin, ymin), self.thickness, self.color_green, self.thickness)
-                image = cv2.circle(image, (xmax, ymax), self.thickness, self.color_green, self.thickness)
+                if selected_point != None and selected_point['process_name'] == 'edit' and selected_point['annotation_index'] == annotation_index and selected_point['point_name'] == 'min':
+                    image = cv2.circle(image, (xmin, ymin), self.thickness, self.color_red, self.thickness)
+                else:
+                    image = cv2.circle(image, (xmin, ymin), self.thickness, self.color_green, self.thickness)
+                if selected_point != None and selected_point['process_name'] == 'edit' and selected_point['annotation_index'] == annotation_index and selected_point['point_name'] == 'max':
+                    image = cv2.circle(image, (xmax, ymax), self.thickness, self.color_red, self.thickness)
+                else:
+                    image = cv2.circle(image, (xmax, ymax), self.thickness, self.color_green, self.thickness)
 
                 
 
@@ -71,7 +78,9 @@ class screen:
                         visible = axis_hold[2]
                         axis_hold = []
 
-                        if visible == 2:
+                        if selected_point != None and selected_point['process_name'] == 'edit' and selected_point['point_name'] == 'keypoint' and selected_point['annotation_index'] == annotation_index and selected_point['keypoint_index'] == axis_index:
+                            image = cv2.circle(image, (x, y), self.thickness, self.color_red, self.thickness)
+                        elif visible == 2:
                             image = cv2.circle(image, (x, y), self.thickness, self.color_green, self.thickness)
                         elif visible == 1:
                             image = cv2.circle(image, (x, y), self.thickness, self.color_blue, self.thickness)
