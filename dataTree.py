@@ -1,14 +1,12 @@
 import json
 import cv2
-
+import os
 class data:
 
     def __init__(self, json_path):
         self.data = {}
         self.json_path = json_path
-
         self.getData()
-        self.setAllAnnotationJsonIndexesToImages()
 
 
     def getData(self):
@@ -65,107 +63,74 @@ class data:
         print("New Category is Added ... ")
 
 
-    def addImage(self, image_path):
+    def addNewImage(self, image_path, original_resolution):
+        temp_image = {}
 
-        image = cv2.imread(image_path)
-        height, width, channel = image.shape
+        temp_image['id'] = self.data['images'][-1]['id'] + 1
+        temp_image['license'] = 1
+        temp_image['file_name'] = image_path
+        temp_image['height'] = original_resolution[0]
+        temp_image['width']  = original_resolution[1]
+        temp_image['date_captured'] = '2021'
 
-        image_info = {}
-        image_info['id'] = self.getNewImageId()
-        image_info['license'] = 1
-        image_info['file_name'] = image_path
-        image_info['height'] = height
-        image_info['width'] = width
-        image_info['date_captured'] = '2021'
-        image_info['annotation_indexes'] = []
-        self.data['images'].append(image_info)
-        print("New Image Added")
-        return image_info['id']
+        self.data['images'].append(temp_image)
+        print("New Image Added ... ")
+        return temp_image
 
-
-    def addAnnotationWithImageIndex(self, image_index, bbox, category_index):
-        annotation = {}
-        image = self.data['images'][image_index]
-        annotation['id'] = len(image['annotation_indexes'])
-        annotation['image_id'] = image['id']  
-        annotation['category_id'] = self.data['categories'][category_index]['id']
-        annotation['segmentation'] = []
-        annotation['area'] = image['height'] * image['width']
-        annotation['bbox'] = bbox
-        annotation['iscrowd'] = 0
-        annotation['keypoints'] = []
-        annotation['num_keypoints'] = 0
-        image['annotation_indexes'].append(len(self.data['annotations']))
+    def GetImageData(self, image_path, original_resolution):
+        selected_image_data = None
         
-        self.data['annotations'].append(annotation)
-        print("Annotation added ...")
-        print(image)
-        return annotation['id']
+        for image in self.data['images']:
+            if image['file_name'] == image_path:
+                selected_image_data = image
+                break
+        
+        if selected_image_data == None:
+            selected_image_data = self.addNewImage(image_path, original_resolution)
+        
+        return selected_image_data, self.getAnnotations(selected_image_data['id'])
+
+    def getAnnotations(self, image_id):
+        selected_annotations = []
+        for annotation in self.data['annotations']:
+            if image_id == annotation['image_id']:
+                selected_annotations.append(annotation)
+        return selected_annotations
 
     def addKeypointToCategoriesWithCategoryIndex(self, index, keypoint_name):
         self.data['categories'][index]['keypoints'].append(keypoint_name)
 
+    def addAnnotationWithImageID(self, category_index, image_id, original_resolution, bbox, selected_image_annotations):
+        temp_annotation = {}
+        temp_annotation['id'] = len(selected_image_annotations)
+        temp_annotation['image_id'] = image_id
+        temp_annotation['category_id'] = self.data['categories'][category_index]['id']
+        temp_annotation['segmentation'] = []
+        temp_annotation['area'] = original_resolution[0] * original_resolution[1]
+        temp_annotation['bbox'] = bbox
+        temp_annotation['iscrowd'] = 0
+        temp_annotation['keypoints'] = []
+        temp_annotation['num_keypoints'] = 0
 
-    def getAnnotationsWithImageIndex(self, image_index):
+        self.data['annotations'].append(temp_annotation)
+        selected_image_annotations.append(temp_annotation)
 
+        return selected_image_annotations
 
-        image = self.data['images'][image_index]
-
+    def addKeypoint(self, selected_image_annotations, x, y, visible):
         
-        annotations = []
-        for annotation_index in image['annotation_indexes']:
-            annotations.append(self.data['annotations'][annotation_index])
-        return annotations
+        selected_image_annotations[-1]['keypoints'].append(x)
+        selected_image_annotations[-1]['keypoints'].append(y)
+        selected_image_annotations[-1]['keypoints'].append(visible)
 
+        num_keypoints = 0
 
-    def addKeypoint(self, annotation_index, x, y, visible, num_keypoints):
-        print("num_keypoints")
-        print(num_keypoints)
-        print("annotation")
-        print(self.data['annotations'][annotation_index])
-
-        self.data['annotations'][annotation_index]['keypoints'].append(x)
-        self.data['annotations'][annotation_index]['keypoints'].append(y)
-        self.data['annotations'][annotation_index]['keypoints'].append(visible)
-        self.data['annotations'][annotation_index]['num_keypoints'] = num_keypoints
-        print("Keypoint added ... ")
-        print(self.data['annotations'][annotation_index])
-
-    def getImageIndex(self, image_path):
-        for index, image in enumerate(self.data['images']):
-            if image_path == image['file_name']:
-                return index
-        self.addImage(image_path)
-        return (len(self.data['images']) - 1)
-
-
-    def getImageIndexes(self, image_paths):
-        image_indexes = []
-        for image_path in image_paths:
-            image_indexes.append(self.getImageIndex(image_path))
-        return image_indexes
-
-
-    def getNewImageId(self):
-        id_ = len(self.data['images'])
-        return id_
-
-
-    def getCategoryIdWithName(self, category_name):
-        for category in self.data['categories']:
-            if category['name'] == category_name:
-                return category['id']
-
-
-    def setAllAnnotationJsonIndexesToImages(self):
-        for index, image in enumerate(self.data['images']):
-            image['annotation_indexes'] = []
-            
-            for json_index, annotation in enumerate(self.data['annotations']):
-                if image['id'] == annotation['image_id']:
-                     annotation['image_id'] = index
-                     image['annotation_indexes'].append(json_index)
-            image['id'] = index
+        for index, axis in enumerate(selected_image_annotations[-1]['keypoints']):
+            if index % 3 == 2 and axis == 2:
+                num_keypoints += 1
+        
+        selected_image_annotations[-1]['num_keypoints'] = num_keypoints
+        return selected_image_annotations
 
     def save(self):
         with open(self.json_path, 'w') as f:

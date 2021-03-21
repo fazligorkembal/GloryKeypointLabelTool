@@ -41,8 +41,6 @@ class screen:
 
 
         if annotations != None or annotations != []:
-            print("Ann")
-            print(annotations)
             for annotation in annotations:
                 bbox = annotation['bbox']
                 xmin = bbox[0]
@@ -50,14 +48,17 @@ class screen:
                 xmax = bbox[0] + bbox[2]
                 ymax = bbox[1] + bbox[3]
 
-                xmin, ymin = utils.reshapeResizeSizes(xmin, ymin, original_resolution, new_resolution)
-                xmax, ymax = utils.reshapeResizeSizes(xmax, ymax, original_resolution, new_resolution)
+
+
+                xmin, ymin = utils.reshapeToNewResolution(xmin, ymin, original_resolution, new_resolution)
+                xmax, ymax = utils.reshapeToNewResolution(xmax, ymax, original_resolution, new_resolution)
 
                 image = cv2.rectangle(image, (xmin, ymin), (xmax, ymax), self.color_green, self.thickness)
                 image = cv2.putText(image, all_categories[annotation['category_id'] - 1]['name'], (xmin + 10, ymin + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_green, 1, cv2.LINE_AA)
                 image = cv2.circle(image, (xmin, ymin), self.thickness, self.color_green, self.thickness)
                 image = cv2.circle(image, (xmax, ymax), self.thickness, self.color_green, self.thickness)
 
+                
 
                 axis_hold = []
                 for axis_index, axis in enumerate(annotation['keypoints']):
@@ -66,13 +67,13 @@ class screen:
                     if len(axis_hold) == 3:
                         x = axis_hold[0]
                         y = axis_hold[1]
-                        x, y = utils.reshapeResizeSizes(x, y, original_resolution, new_resolution)
+                        x, y = utils.reshapeToNewResolution(x, y, original_resolution, new_resolution)
                         visible = axis_hold[2]
                         axis_hold = []
 
-                        if visible == 1:
+                        if visible == 2:
                             image = cv2.circle(image, (x, y), self.thickness, self.color_green, self.thickness)
-                        elif visible == 2:
+                        elif visible == 1:
                             image = cv2.circle(image, (x, y), self.thickness, self.color_blue, self.thickness)
                         else:
                             image = cv2.circle(image, (x, y), self.thickness, self.color_grey, self.thickness)
