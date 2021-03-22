@@ -132,6 +132,10 @@ class data:
         selected_image_annotations[-1]['num_keypoints'] = num_keypoints
         return selected_image_annotations
 
+    def deleteAnnotation(self, annotation):
+        self.data['annotations'].remove(annotation)
+        print("DELETED ... !")
+
     def save(self):
         with open(self.json_path, 'w') as f:
             f.writelines(json.dumps(self.data, indent=4))

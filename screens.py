@@ -29,7 +29,7 @@ class screen:
             self.thickness -= 1
 
 
-    def annotation_screen(self, image, annotations = None, original_resolution=None,new_resolution=None, line_center=None, selected_point=None, all_categories=None):
+    def annotation_screen(self, image, annotations = None, original_resolution=None,new_resolution=None, line_center=None, selected_point=None, all_categories=None, process=None, keypoint_num=None, visible=None):
         image = cv2.putText(image, 'Annotation Screen', (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, self.color_blue, 2, cv2.LINE_AA)
         if line_center != None:
             image = cv2.line(image, (line_center[0], 0), (line_center[0], new_resolution[1]), self.color_green, self.thickness) 
@@ -39,7 +39,13 @@ class screen:
             image = cv2.circle(image, selected_point['location'], self.thickness, self.color_red, self.thickness)
             image = cv2.rectangle(image, selected_point['location'], line_center, self.color_red, self.thickness)
 
-        print(selected_point)
+        
+        if selected_point != None and process == ['annotation_screen']:
+            print(selected_point)
+            image = cv2.putText(image, 'Next Process: Add Max Point', (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_blue, 1, cv2.LINE_AA)
+        elif selected_point == None and process == ['annotation_screen']:
+            image = cv2.putText(image, 'Next Process: New annotation', (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_blue, 1, cv2.LINE_AA)
+
 
         if annotations != None or annotations != []:
             for annotation_index, annotation in enumerate(annotations):
@@ -55,7 +61,13 @@ class screen:
                 xmax, ymax = utils.reshapeToNewResolution(xmax, ymax, original_resolution, new_resolution)
 
                 image = cv2.rectangle(image, (xmin, ymin), (xmax, ymax), self.color_green, self.thickness)
-                image = cv2.putText(image, all_categories[annotation['category_id'] - 1]['name'], (xmin + 10, ymin + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_green, 1, cv2.LINE_AA)
+                category_name = all_categories[annotation['category_id'] - 1]['name']
+                image = cv2.putText(image, category_name, (xmin + 10, ymin + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_green, 1, cv2.LINE_AA)
+
+                if process == ['keypoint_screen'] and keypoint_num < len(all_categories[annotation['category_id'] - 1]['keypoints']):
+                    current_keypoint_name = all_categories[annotation['category_id'] - 1]['keypoints'][keypoint_num]
+                    image = cv2.putText(image, "Next Keypoint Name: " + current_keypoint_name , (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.color_blue, 1, cv2.LINE_AA)
+
                 if selected_point != None and selected_point['process_name'] == 'edit' and selected_point['annotation_index'] == annotation_index and selected_point['point_name'] == 'min':
                     image = cv2.circle(image, (xmin, ymin), self.thickness, self.color_red, self.thickness)
                 else:
