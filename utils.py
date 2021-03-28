@@ -10,7 +10,6 @@ def get_all_images(dataset_path):
                 all_image_paths.append(file_path)
     return all_image_paths
 
-
 def reshapeToOriginalResolution(x, y, original_resolution, new_resolution):
     x = int((x / new_resolution[0]) * original_resolution[0])
     y = int((y / new_resolution[1]) * original_resolution[1])
@@ -50,7 +49,6 @@ def getNearestPoint(selected_image_annotations, x, y, original_resolution, new_r
             selected_point['point_name'] = 'max'
             selected_point['annotation_index'] = index
         
-
         axis_hold = []
         for axis_index, axis in enumerate(annotation['keypoints']):
             axis_hold.append(axis)
@@ -68,7 +66,6 @@ def getNearestPoint(selected_image_annotations, x, y, original_resolution, new_r
                     
                 axis_hold = []
                 
-
     return hold_distance, selected_point
 
         

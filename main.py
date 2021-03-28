@@ -1,30 +1,28 @@
 import cv2
 import utils
-import json
 import dataTree
 import screens
 import time
+import argparse
+
 
 class Tv:
     def __init__(self, images_main_folder, json_file_path):
         self.app_name = "GloryKeypointLabelingtool"
         self.images_main_folder = images_main_folder
         self.json_file_path = json_file_path
-
         self.data = dataTree.data(json_file_path)
         self.all_image_paths = utils.get_all_images(self.images_main_folder)
 
-        self.current_index = 0
         self.selected_image = None
         self.selected_image_id = None
-
         self.original_resolution = None
         self.new_resolution = (1280, 720)
-
         self.selected_original_image = None
-
+        
         self.screens = screens.screen()
-        self.screen_name = ['annotation_screen']
+        self.current_index = 0
+        self.screen_name = ['help_screen']
         self.selected_point = None
         self.selected_button = None
         self.selected_category = None
@@ -32,30 +30,35 @@ class Tv:
         self.added_keypoint_count = 0
         self.selected_image_data = None
         self.editable_point_radius = 3.0
+    
     def start(self):
-        while True:
-            start = time.time()
-            selected_image_path = self.all_image_paths[self.current_index]
-            self.selected_original_image =  cv2.imread(selected_image_path)
-            self.original_resolution = (self.selected_original_image.shape[1], self.selected_original_image.shape[0])
-            self.selected_image_data, self.selected_image_annotations = self.data.GetImageData(selected_image_path, self.original_resolution)
-            end = time.time()
-            #print("Time elapsed %f" % (end - start))
-            pressed_key = self.reflesh(wait=True, annotations=self.selected_image_annotations, selected_point=self.selected_point, selected_category=self.selected_category, all_categories=self.data.data['categories'])
-            if self.menu_controller(pressed_key=pressed_key):
-                break
+        if len(self.all_image_paths) > 0:
+            while True:
+                selected_image_path = self.all_image_paths[self.current_index]
+                self.selected_original_image =  cv2.imread(selected_image_path)
+                self.original_resolution = (self.selected_original_image.shape[1], self.selected_original_image.shape[0])
+                self.selected_image_data, self.selected_image_annotations = self.data.GetImageData(selected_image_path, self.original_resolution)
+                
+                pressed_key = self.reflesh(wait=True, annotations=self.selected_image_annotations, selected_point=self.selected_point, selected_category=self.selected_category, all_categories=self.data.data['categories'])
+                
+                if self.menu_controller(pressed_key=pressed_key):
+                    break
+   
 
 
     def reflesh(self, wait=False, annotations=None, line_center= None, selected_point=None, new_name=None, selected_button=None, selected_category=None, all_categories=None):
         image = cv2.resize(self.selected_original_image, self.new_resolution)
 
         if self.screen_name == ['annotation_screen'] or self.screen_name == ['keypoint_screen']:
-            image = self.screens.annotation_screen(image, annotations=annotations,line_center=line_center, selected_point=selected_point, original_resolution=self.original_resolution, 
+            image = self.screens.annotation_screen(image, annotations=annotations,line_center=line_center, selected_category=self.selected_category, selected_point=selected_point, original_resolution=self.original_resolution, 
                                                    new_resolution=self.new_resolution, all_categories=all_categories, process=self.screen_name, keypoint_num=self.added_keypoint_count, visible=self.keypoint_visible)
 
         if self.screen_name == ['option_screen']:
             all_categories = self.data.data['categories']
             image, self.option_buttons = self.screens.option_screen(image, new_name=new_name, selected_button=selected_button, all_categories=all_categories, selected_category=selected_category)
+
+        if self.screen_name == ['help_screen']:
+            self.screens.help_screen(image)
 
         cv2.imshow(self.app_name, image)
 
@@ -64,7 +67,6 @@ class Tv:
             return cv2.waitKey(0)
         else:
             return None
-
 
     def clickListener(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -101,10 +103,9 @@ class Tv:
                     self.selected_point['location'] = (x, y)
 
                     distance, hold_point = utils.getNearestPoint(self.selected_image_annotations, x, y, self.original_resolution, self.new_resolution)
+                    
                     if distance < self.editable_point_radius:
                         self.selected_point = hold_point
-                        #print("Editable Menu: " + self.selected_point['point_name'])
-                        #print(str(distance) + "     " + str(self.editable_point_radius))
 
                 else:
                     if self.selected_point['process_name'] == 'annotation':
@@ -130,7 +131,6 @@ class Tv:
                             ymax = ymin + ymax
                             bbox = [newx, newy, xmax - newx, ymax - newy]
                             self.selected_image_annotations[self.selected_point['annotation_index']]['bbox'] = list(bbox)
-
                             self.selected_image_annotations[self.selected_point['annotation_index']]['bbox'] = bbox
 
                         elif self.selected_point['point_name'] == 'max':
@@ -138,10 +138,12 @@ class Tv:
                             bbox[2] = newx - bbox[0]
                             bbox[3] = newy - bbox[1]
                             self.selected_image_annotations[self.selected_point['annotation_index']]['bbox'] = list(bbox)
+                        
                         elif self.selected_point['point_name'] == 'keypoint':
                             self.selected_image_annotations[self.selected_point['annotation_index']]['keypoints'][self.selected_point['keypoint_index'] - 2] = newx
                             self.selected_image_annotations[self.selected_point['annotation_index']]['keypoints'][self.selected_point['keypoint_index'] - 1] = newy
-                
+                            self.selected_image_annotations[self.selected_point['annotation_index']]['keypoints'][self.selected_point['keypoint_index']] = self.keypoint_visible
+
                     self.selected_point = None
                 self.reflesh(wait=False, annotations=self.selected_image_annotations, line_center=(x,y), all_categories=self.data.data['categories']) 
 
@@ -149,6 +151,7 @@ class Tv:
 
             elif self.screen_name == ['keypoint_screen']:
                 num_keypoints = len(self.data.data['categories'][self.selected_category['index']]['keypoints'])
+                
                 if self.added_keypoint_count < num_keypoints:
                     newx, newy = utils.reshapeToOriginalResolution(x, y, self.original_resolution, self.new_resolution)
                     self.selected_image_annotations = self.data.addKeypoint( self.selected_image_annotations, newx, newy, self.keypoint_visible)
@@ -159,19 +162,24 @@ class Tv:
                     self.added_keypoint_count = 0
                     self.screen_name = ['annotation_screen']
 
-                #print(self.data.data['categories'])
 
         if event == cv2.EVENT_MOUSEMOVE and (self.screen_name == ['annotation_screen'] or self.screen_name == ['keypoint_screen']):
             self.reflesh(wait=False, annotations=self.selected_image_annotations, selected_point=self.selected_point, line_center=(x,y), all_categories=self.data.data['categories']) 
 
     def menu_controller(self, pressed_key=None):
-        #print(pressed_key)
         if pressed_key & 0xFF == ord('q'):
+            self.data.save()
             return True
 
         if pressed_key & 0xFF == ord('e'):
             if self.screen_name != ['option_screen']:
                 self.screen_name = ['option_screen']
+            else:
+                self.screen_name = ['annotation_screen']
+        
+        if pressed_key & 0xFF == ord('h'):
+            if self.screen_name != ['help_screen']:
+                self.screen_name = ['help_screen']
             else:
                 self.screen_name = ['annotation_screen']
 
@@ -181,13 +189,13 @@ class Tv:
         if pressed_key & 0xFF == 43:
             self.screens.increaseCircle()
 
-        if pressed_key & 0xff == 49 and self.screen_name == ['annotation_screen']:
+        if pressed_key & 0xff == 49 and self.screen_name != ['option_screen'] and self.screen_name != ['help_screen']:
             self.keypoint_visible = 2
         
-        if pressed_key & 0xFF == 50 and self.screen_name == ['annotation_screen']:
+        if pressed_key & 0xFF == 50 and self.screen_name != ['option_screen'] and self.screen_name != ['help_screen']:
             self.keypoint_visible = 1
         
-        if pressed_key & 0xFF == 51 and self.screen_name == ['annotation_screen']:
+        if pressed_key & 0xFF == 51 and self.screen_name != ['option_screen'] and self.screen_name != ['help_screen']:
             self.keypoint_visible = 0
 
         if pressed_key & 0xFf == 255 and self.selected_point != None and self.selected_point['process_name'] == 'edit':
@@ -195,16 +203,15 @@ class Tv:
 
         if self.screen_name == ['annotation_screen']:
             if pressed_key & 0xFF == ord('d'):
-                if self.current_index < len(self.data.data['images']) - 1:
+                if self.current_index < len(self.all_image_paths) - 1:
                     self.current_index += 1
                 else:
-                    self.current_index =  len(self.data.data['images']) -1
+                    self.current_index =  len(self.all_image_paths) -1
             if pressed_key & 0xFF == ord('a'):
                 if self.current_index > 0:
                     self.current_index -= 1
                 else:
                     self.current_index = 0
-            
             if pressed_key & 0xFF == 27:
                 self.selected_point = None
 
@@ -234,5 +241,11 @@ class Tv:
 
 if __name__ == "__main__":
 
-    tv = Tv("/home/gorkem/Documents/GloryKeypointLabelTool/dataset", "/home/gorkem/Documents/GloryKeypointLabelTool/person_keypoints_val2017.json")
+
+    parser = argparse.ArgumentParser(description="Keypoint Labeling Tool")
+    parser.add_argument("--image_folder", type=str, help='Root images folder path', required=True)
+    parser.add_argument("--json_file", type=str, help='Json path, if the file does not exist, it will be created', required=True)
+    args = parser.parse_args()
+
+    tv = Tv(args.image_folder, args.json_file)
     tv.start()

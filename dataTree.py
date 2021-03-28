@@ -2,22 +2,17 @@ import json
 import cv2
 import os
 class data:
-
     def __init__(self, json_path):
         self.data = {}
         self.json_path = json_path
         self.getData()
-
 
     def getData(self):
         try:
             with open(self.json_path) as f:
                 data = json.load(f)
                 self.data = data
-                print("Dataset Found")
-
         except:
-            print("Data Empty ... !")
             self.data['info'] = {}
             self.data['licenses'] = []
             self.data['categories'] = []
@@ -26,7 +21,6 @@ class data:
 
             self.addInfo('1', '2021', 'Keypoints', 'None', 'None', '2021')
             self.addlicense('1', 'None', 'None')
-     
 
     def addInfo(self, year, version, description, contributor, url, date_created):
         dict_info = {}
@@ -38,8 +32,6 @@ class data:
         dict_info['date_created'] = date_created
 
         self.data['info'] = dict_info
-        print("New Info is Added ... ")
-
 
     def addlicense(self, id_, url, name):
         new_license = {}
@@ -48,8 +40,6 @@ class data:
         new_license['name'] = name
 
         self.data['licenses'].append(new_license)
-        print("New License is Added ... ")
-
 
     def addCategory(self, name, keypoints=None, skeleton=None):
         category = {}
@@ -60,13 +50,15 @@ class data:
         category['skeleton'] = []
 
         self.data['categories'].append(category)
-        print("New Category is Added ... ")
-
 
     def addNewImage(self, image_path, original_resolution):
         temp_image = {}
 
-        temp_image['id'] = self.data['images'][-1]['id'] + 1
+        if len(self.data['images']) > 0:
+            temp_image['id'] = self.data['images'][-1]['id'] + 1
+        else:
+            temp_image['id'] = 0
+
         temp_image['license'] = 1
         temp_image['file_name'] = image_path
         temp_image['height'] = original_resolution[0]
@@ -74,7 +66,6 @@ class data:
         temp_image['date_captured'] = '2021'
 
         self.data['images'].append(temp_image)
-        print("New Image Added ... ")
         return temp_image
 
     def GetImageData(self, image_path, original_resolution):
@@ -134,7 +125,6 @@ class data:
 
     def deleteAnnotation(self, annotation):
         self.data['annotations'].remove(annotation)
-        print("DELETED ... !")
 
     def save(self):
         with open(self.json_path, 'w') as f:
